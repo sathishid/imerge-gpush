@@ -1,22 +1,19 @@
 package com.arasoftwares.imerge;
 
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.math.BigInteger;
+import java.security.GeneralSecurityException;
 import java.util.ArrayList;
 import java.util.Base64;
+import java.util.Collections;
+import java.util.List;
 
 import com.arasoftwares.imerge.domain.GmailHistoryResponse;
-import com.arasoftwares.imerge.domain.MyWatchRequest;
 import com.arasoftwares.imerge.domain.ResponseWrapper;
 import com.fasterxml.jackson.databind.ObjectMapper;
-
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.client.RestTemplate;
-
 import com.google.api.client.auth.oauth2.Credential;
 import com.google.api.client.extensions.java6.auth.oauth2.AuthorizationCodeInstalledApp;
 import com.google.api.client.extensions.jetty.auth.oauth2.LocalServerReceiver;
@@ -29,27 +26,20 @@ import com.google.api.client.json.jackson2.JacksonFactory;
 import com.google.api.client.util.store.FileDataStoreFactory;
 import com.google.api.services.gmail.Gmail;
 import com.google.api.services.gmail.GmailScopes;
+import com.google.api.services.gmail.model.History;
 import com.google.api.services.gmail.model.Label;
+import com.google.api.services.gmail.model.ListHistoryResponse;
 import com.google.api.services.gmail.model.ListLabelsResponse;
 import com.google.api.services.gmail.model.Message;
 import com.google.api.services.gmail.model.WatchRequest;
-import com.google.api.services.gmail.model.WatchResponse;
-import com.google.api.services.gmail.Gmail;
-import com.google.api.services.gmail.model.History;
-import com.google.api.services.gmail.model.ListHistoryResponse;
 
-import java.io.IOException;
-import java.math.BigInteger;
-import java.util.ArrayList;
-import java.util.List;
-import java.io.FileNotFoundException;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.net.URI;
-import java.security.GeneralSecurityException;
-import java.util.Collections;
-import java.util.List;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/")
@@ -177,20 +167,26 @@ public class GMailClientController {
 
     @PostMapping("webhook")
     public ResponseEntity<?> recieveMail(@RequestBody final ResponseWrapper responseWrapper) {
-        System.out.println("STAART"+responseWrapper);
+        System.out.println("STAART" + responseWrapper);
         try {
             final String decodeRequest = new String(
                     Base64.getMimeDecoder().decode(responseWrapper.getMessage().getData().getBytes()));
             ObjectMapper mapper = new ObjectMapper();
             GmailHistoryResponse gmailResponse = mapper.readValue(decodeRequest, GmailHistoryResponse.class);
-            System.out.println("HISTORY ID:"+gmailResponse.getHistoryId().toString());
-            ListHistoryResponse historyResponse = listHistory(getGMail(), USER_ID, gmailResponse.getHistoryId());
+            System.out.println("HISTORY ID:" + gmailResponse.getHistoryId().toString());
+            Gmail gmail = getGMail();
+            ListHistoryResponse historyResponse = listHistory(gmail, USER_ID, gmailResponse.getHistoryId());
             if (historyResponse.getHistory() != null) {
                 if (historyResponse.getHistory().size() > 0) {
                     History history = historyResponse.getHistory().get(0);
                     if (history != null && history.size() > 0) {
                         Message message = history.getMessages().get(0);
-                        System.out.println("Message Snippet:"+message.getSnippet());
+
+                        System.out.println("Message Snippet:" + message.getId());
+                        if (message.getId() != null) {
+                            Message gmailMessage = getGmailMessage(gmail, USER_ID, message.getId());
+                            System.out.println(gmailMessage.getSnippet());
+                        }
                         System.out.println(message.getRaw());
                     }
                 }
@@ -202,5 +198,13 @@ public class GMailClientController {
         }
         return ResponseEntity.noContent().build();
 
+    }
+
+    public static Message getGmailMessage(Gmail service, String userId, String messageId) throws IOException {
+        Message message = service.users().messages().get(userId, messageId).execute();
+
+        System.out.println("Message snippet: " + message.getSnippet());
+
+        return message;
     }
 }

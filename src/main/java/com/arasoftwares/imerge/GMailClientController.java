@@ -96,6 +96,7 @@ public class GMailClientController {
                 .execute();
 
         while (response.getHistory() != null) {
+            System.out.println("RESPONE SIZE:" + response.size());
             histories.addAll(response.getHistory());
             if (response.getNextPageToken() != null) {
                 String pageToken = response.getNextPageToken();

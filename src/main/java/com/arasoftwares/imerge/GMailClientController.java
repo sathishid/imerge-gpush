@@ -3,8 +3,10 @@ package com.arasoftwares.imerge;
 import java.util.ArrayList;
 import java.util.Base64;
 
+import com.arasoftwares.imerge.domain.GmailHistoryResponse;
 import com.arasoftwares.imerge.domain.MyWatchRequest;
 import com.arasoftwares.imerge.domain.ResponseWrapper;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -29,9 +31,17 @@ import com.google.api.services.gmail.Gmail;
 import com.google.api.services.gmail.GmailScopes;
 import com.google.api.services.gmail.model.Label;
 import com.google.api.services.gmail.model.ListLabelsResponse;
+import com.google.api.services.gmail.model.Message;
 import com.google.api.services.gmail.model.WatchRequest;
 import com.google.api.services.gmail.model.WatchResponse;
+import com.google.api.services.gmail.Gmail;
+import com.google.api.services.gmail.model.History;
+import com.google.api.services.gmail.model.ListHistoryResponse;
 
+import java.io.IOException;
+import java.math.BigInteger;
+import java.util.ArrayList;
+import java.util.List;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
@@ -48,7 +58,7 @@ public class GMailClientController {
     private static final String APPLICATION_NAME = "Gmail API Java Quickstart";
     private static final JsonFactory JSON_FACTORY = JacksonFactory.getDefaultInstance();
     private static final String TOKENS_DIRECTORY_PATH = "tokens";
-
+    private static final String USER_ID = "mazher@imerge.in";
     /**
      * Global instance of the scopes required by this quickstart. If modifying these
      * scopes, delete your previously saved tokens/ folder.
@@ -89,27 +99,38 @@ public class GMailClientController {
                 + "<p>Welcome to the Web App</body></html>";
     }
 
-    @GetMapping("api-watch")
-    public ResponseEntity<String> gmailApiWatch() {
-        try {
-            final String baseUrl = "https://www.googleapis.com/gmail/v1/users/mazher@imerge.in/watch";
-            URI uri = new URI(baseUrl);
-            RestTemplate restTemplate = new RestTemplate();
-            MyWatchRequest wreRequest = MyWatchRequest.createRequest();
-            ResponseEntity<String> result = restTemplate.postForEntity(uri, wreRequest, String.class);
+    public static ListHistoryResponse listHistory(Gmail service, String userId, BigInteger startHistoryId)
+            throws IOException {
+        List<History> histories = new ArrayList<History>();
+        ListHistoryResponse response = service.users().history().list(userId).setStartHistoryId(startHistoryId)
+                .execute();
 
-            System.out.println(result);
-            return new ResponseEntity<String>(result.getBody(), HttpStatus.OK);
-        } catch (Exception e) {
-            return new ResponseEntity<String>(e.getMessage(), HttpStatus.OK);
+        while (response.getHistory() != null) {
+            histories.addAll(response.getHistory());
+            if (response.getNextPageToken() != null) {
+                String pageToken = response.getNextPageToken();
+                response = service.users().history().list(userId).setPageToken(pageToken)
+                        .setStartHistoryId(startHistoryId).execute();
+
+            } else {
+                break;
+            }
         }
+        return response;
+    }
+
+    public static Message getMessage(Gmail service, String userId, String messageId) throws IOException {
+        Message message = service.users().messages().get(userId, messageId).execute();
+
+        System.out.println("Message snippet: " + message.getSnippet());
+
+        return message;
     }
 
     @GetMapping("watch")
     public ResponseEntity<String> gmailWatch() {
         try {
             Gmail service = getGMail();
-
             WatchRequest request = new WatchRequest();
             List<String> labels = new ArrayList<String>();
             labels.add("INBOX");
@@ -160,7 +181,20 @@ public class GMailClientController {
         try {
             final String decodeRequest = new String(
                     Base64.getMimeDecoder().decode(responseWrapper.getMessage().getData().getBytes()));
-            System.out.println(decodeRequest);
+            ObjectMapper mapper = new ObjectMapper();
+            GmailHistoryResponse gmailResponse = mapper.readValue(decodeRequest, GmailHistoryResponse.class);
+            ListHistoryResponse historyResponse = listHistory(getGMail(), USER_ID, gmailResponse.getHistoryId());
+            if (historyResponse.getHistory() != null) {
+                if (historyResponse.getHistory().size() > 0) {
+                    History history = historyResponse.getHistory().get(0);
+                    if (history != null && history.size() > 0) {
+                        Message message = history.getMessages().get(0);
+                        System.out.println(message.getRaw());
+                    }
+                }
+            }
+
+            System.out.println(historyResponse);
         } catch (final Exception e) {
             System.out.println(e.getMessage());
         }

@@ -177,18 +177,20 @@ public class GMailClientController {
 
     @PostMapping("webhook")
     public ResponseEntity<?> recieveMail(@RequestBody final ResponseWrapper responseWrapper) {
-        System.out.println(responseWrapper);
+        System.out.println("STAART"+responseWrapper);
         try {
             final String decodeRequest = new String(
                     Base64.getMimeDecoder().decode(responseWrapper.getMessage().getData().getBytes()));
             ObjectMapper mapper = new ObjectMapper();
             GmailHistoryResponse gmailResponse = mapper.readValue(decodeRequest, GmailHistoryResponse.class);
+            System.out.println("HISTORY ID:"+gmailResponse.getHistoryId().toString());
             ListHistoryResponse historyResponse = listHistory(getGMail(), USER_ID, gmailResponse.getHistoryId());
             if (historyResponse.getHistory() != null) {
                 if (historyResponse.getHistory().size() > 0) {
                     History history = historyResponse.getHistory().get(0);
                     if (history != null && history.size() > 0) {
                         Message message = history.getMessages().get(0);
+                        System.out.println("Message Snippet:"+message.getSnippet());
                         System.out.println(message.getRaw());
                     }
                 }

@@ -69,6 +69,7 @@ public class GMailClientController {
         if (in == null) {
             throw new FileNotFoundException("Resource not found: " + CREDENTIALS_FILE_PATH);
         }
+
         final GoogleClientSecrets clientSecrets = GoogleClientSecrets.load(JSON_FACTORY, new InputStreamReader(in));
 
         // Build flow and trigger user authorization request.
@@ -77,7 +78,7 @@ public class GMailClientController {
                         .setDataStoreFactory(new FileDataStoreFactory(new java.io.File(TOKENS_DIRECTORY_PATH)))
                         .setAccessType("offline").build();
         final LocalServerReceiver receiver = new LocalServerReceiver.Builder().setPort(8888).build();
-        return new AuthorizationCodeInstalledApp(flow, receiver).authorize("user");
+        return new AuthorizationCodeInstalledApp(flow, receiver).authorize("mazher@imerge.in");
     }
 
     @GetMapping
@@ -107,29 +108,34 @@ public class GMailClientController {
     @GetMapping("watch")
     public ResponseEntity<String> gmailWatch() {
         try {
+            Gmail service = getGMail();
+
             WatchRequest request = new WatchRequest();
             List<String> labels = new ArrayList<String>();
             labels.add("INBOX");
             request.setLabelIds(labels);
             request.setLabelFilterAction("include");
             request.setTopicName("projects/gpushproject/topics/gpushtopic");
+            service.users().watch("mazher@imerge.in", request).execute();
 
-            // Gmail.Builder
-            // WatchResponse wres = w.watch("dsfdas", request).execute();
         } catch (Exception e) {
             return new ResponseEntity<String>("Watched", HttpStatus.OK);
         }
         return new ResponseEntity<String>("Watched", HttpStatus.OK);
     }
 
+    private Gmail getGMail() throws GeneralSecurityException, IOException {
+        final NetHttpTransport HTTP_TRANSPORT = GoogleNetHttpTransport.newTrustedTransport();
+        final Gmail service = new Gmail.Builder(HTTP_TRANSPORT, JSON_FACTORY, getCredentials(HTTP_TRANSPORT))
+                .setApplicationName(APPLICATION_NAME).build();
+        return service;
+    }
+
     @GetMapping("lables")
     public ResponseEntity<String> getLables() {
         try {
             // Build a new authorized API client service.
-            final NetHttpTransport HTTP_TRANSPORT = GoogleNetHttpTransport.newTrustedTransport();
-            final Gmail service = new Gmail.Builder(HTTP_TRANSPORT, JSON_FACTORY, getCredentials(HTTP_TRANSPORT))
-                    .setApplicationName(APPLICATION_NAME).build();
-
+            Gmail service = getGMail();
             // Print the labels in the user's account.
             final String user = "me";
             final ListLabelsResponse listResponse = service.users().labels().list(user).execute();

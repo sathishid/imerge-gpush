@@ -44,7 +44,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/")
 public class GMailClientController {
-
+    private static BigInteger previousHistoryId;
     private static final String APPLICATION_NAME = "Gmail API Java Quickstart";
     private static final JsonFactory JSON_FACTORY = JacksonFactory.getDefaultInstance();
     private static final String TOKENS_DIRECTORY_PATH = "tokens";
@@ -92,9 +92,12 @@ public class GMailClientController {
     public static ListHistoryResponse listHistory(Gmail service, String userId, BigInteger startHistoryId)
             throws IOException {
         List<History> histories = new ArrayList<History>();
-        ListHistoryResponse response = service.users().history().list(userId).setStartHistoryId(startHistoryId)
+        if (previousHistoryId == null) {
+            previousHistoryId = startHistoryId;
+        }
+        ListHistoryResponse response = service.users().history().list(userId).setStartHistoryId(previousHistoryId)
                 .execute();
-
+        System.out.println("LIST HISTORY RESPONSE: " + response.toPrettyString());
         while (response.getHistory() != null) {
             System.out.println("RESPONE SIZE:" + response.size());
             histories.addAll(response.getHistory());
@@ -110,6 +113,7 @@ public class GMailClientController {
         for (History history : histories) {
             System.out.println(history.toPrettyString());
         }
+        previousHistoryId = startHistoryId;
         return response;
     }
 

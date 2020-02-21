@@ -18,7 +18,7 @@ public class GMailClientController {
     @GetMapping
     public String sayHi() {
         System.out.println("say hi method called");
-        return "<html><head><meta name='google-site-verification' content='yOnmr52jMDmWBnHCu0oMMy-B4CqJc8bug__iKNgzYFQ' />"
+        return "<html><head><meta name='google-site-verification' content='IH0iwOYz3p9Xr3GfZi3UeMIQrYtzbxeNOU6kUDJB9JQ' />"
                 + "<title>Gmail-Push Notification </title>" + "</head><body><h1>Hello World!</h1>"
                 + "<p>Welcome to the Web App</body></html>";
     }

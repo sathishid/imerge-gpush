@@ -95,6 +95,7 @@ public class GMailClientController {
         if (previousHistoryId == null) {
             previousHistoryId = startHistoryId;
         }
+        System.out.println("PREVIOUS HISTORY:"+previousHistoryId);
         ListHistoryResponse response = service.users().history().list(userId).setStartHistoryId(previousHistoryId)
                 .execute();
         System.out.println("LIST HISTORY RESPONSE: " + response.toPrettyString());
@@ -181,7 +182,7 @@ public class GMailClientController {
                     Base64.getMimeDecoder().decode(responseWrapper.getMessage().getData().getBytes()));
             ObjectMapper mapper = new ObjectMapper();
             GmailHistoryResponse gmailResponse = mapper.readValue(decodeRequest, GmailHistoryResponse.class);
-            System.out.println("HISTORY ID:" + gmailResponse.getHistoryId().toString());
+            System.out.println("Current HISTORY ID:" + gmailResponse.getHistoryId().toString());
             Gmail gmail = getGMail();
             ListHistoryResponse historyResponse = listHistory(gmail, USER_ID, gmailResponse.getHistoryId());
             if (historyResponse.getHistory() != null) {
@@ -202,7 +203,7 @@ public class GMailClientController {
 
             System.out.println(historyResponse);
         } catch (final Exception e) {
-            System.out.println(e.getMessage());
+            e.printStackTrace();
         }
         return ResponseEntity.noContent().build();
 

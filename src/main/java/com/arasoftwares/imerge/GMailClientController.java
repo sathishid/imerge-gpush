@@ -107,6 +107,9 @@ public class GMailClientController {
                 break;
             }
         }
+        for (History history : histories) {
+            System.out.println(history.toPrettyString());
+        }
         return response;
     }
 
